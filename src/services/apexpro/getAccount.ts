@@ -1,35 +1,75 @@
 import ApexproConnector from './client';
 import 'dotenv/config';
 
-export const apexproGetAccount = async () => {
-	try {
-		const connector = await ApexproConnector.build();
-		if(!connector) return false;
+interface SymbolToOraclePrice {
+  [key: string]: {
+    oraclePrice: string;
+    createdTime: number;
+  };
+}
 
-		/*const account = await connector.client.privateApi.getAccount(
-			process.env.ETH_ADDRESS, process.env.ACCOUNT_ID,
-		);*/
+interface Balance {
+  totalEquityValue: string;
+  availableBalance: string;
+  initialMargin: string;
+  maintenanceMargin: string;
+  symbolToOraclePrice: SymbolToOraclePrice;
+}
 
-		const balance = await connector.client.privateApi.accountBalance();
+interface AccountBalance {
+  usdtBalance: Balance;
+  usdcBalance: Balance;
+}
 
-		console.log('apexpro balance: ', balance);
-		/*if (account.wallets != null && account.wallets.length > 0) {
-			console.log('apexpro account balance: ', Number(account.wallets[0].balance));
-			if (Number(account.wallets[0].balance) == 0) {
-				return false;
-			} else {
-				return true;
-			}
-		} */
-		if (balance != null){
-			if (Number(balance.availableBalance) == 0) {
-				return false;
-			} else {
-				return true;
-			}
-		} else
-			return false
-	} catch (error) {
-		console.error(error);
-	}
+export const apexproGetAccount = async (): Promise<AccountBalance | boolean> => {
+  try {
+    const connector = await ApexproConnector.build();
+    if (!connector) return false;
+
+    const balance = await connector.client.privateApi.accountBalance();
+
+    if (balance != null) {
+      const usdtBalance: Balance = {
+        totalEquityValue: balance.totalEquityValue,
+        availableBalance: balance.availableBalance,
+        initialMargin: balance.initialMargin,
+        maintenanceMargin: balance.maintenanceMargin,
+        symbolToOraclePrice: {
+          'BTC-USDC': {
+            oraclePrice: '',
+            createdTime: 0,
+          },
+        },
+      };
+
+      const usdcBalance: Balance = {
+        totalEquityValue: balance.totalEquityValue,
+        availableBalance: balance.availableBalance,
+        initialMargin: balance.initialMargin,
+        maintenanceMargin: balance.maintenanceMargin,
+        symbolToOraclePrice: {
+          'BTC-USDC': {
+            oraclePrice: '',
+            createdTime: 0,
+          },
+        },
+      };
+
+      const accountBalance: AccountBalance = {
+        usdtBalance,
+        usdcBalance,
+      };
+
+      if (Number(balance.availableBalance) === 0) {
+        return false;
+      } else {
+        return accountBalance;
+      }
+    } else {
+      return false;
+    }
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
 };
